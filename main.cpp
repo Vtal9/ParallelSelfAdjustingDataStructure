@@ -14,9 +14,12 @@ int main() {
     Action<int>(3, ActionType::INSERT),
     Action<int>(2, ActionType::INSERT),
     Action<int>(1, ActionType::INSERT)};
-    cout << "start performing actions \n";
     std::sort(actions.begin(), actions.end());
     answers = tree.performActionsInParallel(actions.begin(), actions.end());
-    cout << "root = " << tree.root->value << "\n left = " << tree.root->left->value << "\n right = " << tree.root->right->value;
+    cout << "root = " << tree.root->value << "\n left = " << tree.root->left->value << "\n right = " << tree.root->right->value << "\n";
+    vector<Action<int>> actions1 = {Action<int>(4, ActionType::INSERT)};
+    answers = tree.performActionsInParallel(actions1.begin(), actions1.end());
+    cout << "root = " << tree.root->value << "\n left = " << tree.root->left->value << "\n right = " << tree.root->right->value << "\n";
+    cout << "right->right = " << tree.root->right->right->value;
     return 0;
 }

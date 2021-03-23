@@ -22,13 +22,13 @@ private:
      **/
     template<typename ActionsIterator, typename AnswerIterator>
     TreeNode<T> *
-    performActions(TreeNode<T> *curRoot, ActionsIterator first, ActionsIterator last, AnswerIterator retFirst,
+    performActions(TreeNode<T> *curRoot, ActionsIterator firstAction, ActionsIterator lastAction, AnswerIterator retFirst,
                    AnswerIterator retLast) {
-        if (first == last || root == nullptr) {
-            return createTree(first, last, retFirst, retLast);
-        }
+        if(firstAction == lastAction) return curRoot;
+        if (curRoot == nullptr) return createTree(firstAction, lastAction, retFirst, retLast);
 
-        T x = curRoot->value;
+
+        T curValue = curRoot->value;
         double noRotate = 0;   //TODO(compute new weights)
         double leftRotate = 0;  //TODO(compute new weights)
         double rightRotate = 0; //TODO(compute new weights)
@@ -39,38 +39,39 @@ private:
             } else {
                 curRoot = performRightRotate(curRoot);
             }
-            return performActions(curRoot, first, last, retFirst, retLast);
+            return performActions(curRoot, firstAction, lastAction, retFirst, retLast);
         }
-        ActionsIterator leftFirst = first;
-        ActionsIterator rightFirst = std::partition(first, last, [x](const auto &action) {
-            return action.value < x;
+
+        ActionsIterator leftFirst = firstAction;
+        ActionsIterator rightFirst = std::partition(firstAction, lastAction, [&curValue](const auto &action) {
+            return action.value < curValue;
         });
+
         ActionsIterator leftLast = rightFirst;
-        if (rightFirst != last) {
+        if (rightFirst != lastAction) {
             Action<T> a = *rightFirst;
-            AnswerIterator it = retFirst + (rightFirst - first);
-            if (a.value == x) {
+            AnswerIterator it = retFirst + (rightFirst - firstAction);
+            if (a.value == curValue) {
                 performAction(a, it, curRoot);
                 curRoot->weight++;
+                if (rightFirst == firstAction && std::next(rightFirst) == lastAction) {
+                    cout << (*rightFirst).value << "\n";
+                    return curRoot;
+                }
+                rightFirst = std::next(rightFirst);
             }
-            if (rightFirst == first && std::next(rightFirst) == last) {
-                return curRoot;
-            }
-            rightFirst = std::next(rightFirst);
         }
 
         TreeNode<T> *leftChild = curRoot->left;
         TreeNode<T> *rightChild = curRoot->right;
 
         int oldCurWeight = curRoot->getVertexWeight();
-        cout << "forking \n";
         sptl::fork2([this, &curRoot, &leftFirst, &leftLast, &retFirst] {
             curRoot->left = performActions(curRoot->left, leftFirst, leftLast, retFirst,
                                            retFirst + (leftLast - leftFirst));
-        }, [this, &curRoot, &rightFirst, &last, &retFirst, &first, &retLast] {
-            curRoot->right = performActions(curRoot->right, rightFirst, last, retFirst + (rightFirst - first), retLast);
+        }, [this, &curRoot, &rightFirst, &lastAction, &retFirst, &firstAction, &retLast] {
+            curRoot->right = performActions(curRoot->right, rightFirst, lastAction, retFirst + (rightFirst - firstAction), retLast);
         });
-        cout << "forking ended \n";
         curRoot->weight = oldCurWeight + (curRoot->left == nullptr ? 0 : curRoot->left->weight) +
                           (curRoot->right == nullptr ? 0 : curRoot->right->weight);
         return curRoot;
@@ -130,7 +131,6 @@ private:
         }, [this, &newRoot, &mid, &last, &first, &retFirst, &retLast] {
             newRoot->right = createTree(mid + 1, last, retFirst + (mid - first) + 1, retLast);
         });
-        cout << "end performing tree \n";
         return newRoot;
     }
 
