@@ -8,10 +8,8 @@ using std::cout;
 
 int main() {
     vector<bool> answers(3);
-    cout << "creating tree \n";
 
     PATree1<int> tree{};
-    cout << "tree created \n";
     vector<Action<int>> actions = {
     Action<int>(3, ActionType::INSERT),
     Action<int>(2, ActionType::INSERT),
@@ -20,6 +18,5 @@ int main() {
     std::sort(actions.begin(), actions.end());
     answers = tree.performActionsInParallel(actions.begin(), actions.end());
     cout << "root = " << tree.root->value << "\n left = " << tree.root->left->value << "\n right = " << tree.root->right->value;
-    cout << "actions performed \n";
     return 0;
 }

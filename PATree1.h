@@ -24,14 +24,11 @@ private:
     TreeNode<T> *
     performActions(TreeNode<T> *curRoot, ActionsIterator first, ActionsIterator last, AnswerIterator retFirst,
                    AnswerIterator retLast) {
-        cout << "perform actions \n";
         if (first == last || root == nullptr) {
-            cout << "go to create tree \n";
             return createTree(first, last, retFirst, retLast);
         }
 
         T x = curRoot->value;
-        cout << "start performing actions in cur root = " << x << "\n";
         double noRotate = 0;   //TODO(compute new weights)
         double leftRotate = 0;  //TODO(compute new weights)
         double rightRotate = 0; //TODO(compute new weights)
@@ -44,14 +41,11 @@ private:
             }
             return performActions(curRoot, first, last, retFirst, retLast);
         }
-        cout << "performing partition \n";
         ActionsIterator leftFirst = first;
         ActionsIterator rightFirst = std::partition(first, last, [x](const auto &action) {
             return action.value < x;
         });
-        cout << "partition performed \n";
         ActionsIterator leftLast = rightFirst;
-        cout << "try to perform action in current root \n";
         if (rightFirst != last) {
             Action<T> a = *rightFirst;
             AnswerIterator it = retFirst + (rightFirst - first);
@@ -64,7 +58,6 @@ private:
             }
             rightFirst = std::next(rightFirst);
         }
-        cout << "action in current root performed \n";
 
         TreeNode<T> *leftChild = curRoot->left;
         TreeNode<T> *rightChild = curRoot->right;
@@ -85,7 +78,6 @@ private:
 
     TreeNode<T> *performLeftRotate(TreeNode<T> *curRoot) {
         if (!curRoot || !curRoot->right) return curRoot;
-        cout << "start performing left rotation \n";
         int oldRootWeight = curRoot->getVertexWeight();
 
         TreeNode<T> *right = curRoot->right;
@@ -101,13 +93,11 @@ private:
         right->left = curRoot;
         right->weight =
                 oldRightChildWeight + right->left->weight + (right->right == nullptr ? 0 : right->right->weight);
-        cout << "end performing left rotation \n";
         return right;
     }
 
     TreeNode<T> *performRightRotate(TreeNode<T> *curRoot) {
         if (!curRoot || !curRoot->left) return curRoot;
-        cout << "start performing right rotation \n";
         int oldRootWeight = curRoot->getVertexWeight();
 
         TreeNode<T> *left = curRoot->left;
@@ -124,7 +114,6 @@ private:
         left->weight =
                 oldLeftChildWeight + left->right->weight + (left->left == nullptr ? 0 : left->left->weight);
 
-        cout << "end performing right rotation \n";
         return left;
     }
 
@@ -132,7 +121,6 @@ private:
     template<typename ActionsIterator, typename AnswerIterator>
     TreeNode<T> *
     createTree(ActionsIterator first, ActionsIterator last, AnswerIterator retFirst, AnswerIterator retLast) {
-        cout << "start creating tree \n";
         if (first == last) return nullptr;
         ActionsIterator mid = first + (last - first) / 2;
         *(retFirst + (mid - first)) = true;
@@ -148,7 +136,6 @@ private:
 
     template<typename Iterator>
     void performAction(Action<T> a, Iterator it, TreeNode<T> *curRoot) {
-        cout << "performing action with value " << a.value << "\n";
         switch (a.actionType) {
             case ActionType::INSERT:
                 *it = curRoot->isDeleted;
@@ -170,9 +157,7 @@ public:
     template<typename Iterator>
     std::vector<bool> performActionsInParallel(Iterator actionsBegin, Iterator actionsEnd) {
         std::vector<bool> answers(actionsEnd - actionsBegin);
-        cout << "preforming \n";
         root = performActions(root, actionsBegin, actionsEnd, answers.begin(), answers.end());
-        cout << "performed \n";
         return answers;
     }
 
