@@ -5,7 +5,6 @@ template <typename T>
 struct TreeNode {
     T value;
 
-    int countUsages;
     int weight;
     bool isDeleted;
     TreeNode* left;
@@ -13,7 +12,6 @@ struct TreeNode {
 
     explicit TreeNode(int val){
         value = val;
-        countUsages= 1;
         weight = 1;
         isDeleted = false;
         left = nullptr;
@@ -22,7 +20,6 @@ struct TreeNode {
 
     TreeNode(int val, TreeNode* Left, TreeNode* Right){
         value = val;
-        countUsages = 1;
         weight = 1 + Left->weight + Right->weight;
         isDeleted = false;
         left = Left;

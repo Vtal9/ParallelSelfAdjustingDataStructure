@@ -7,6 +7,7 @@
 #include "Action.h"
 #include "spgranularity.hpp"
 #include <iostream>
+#include <cmath>
 
 using std::cout;
 
@@ -22,40 +23,43 @@ private:
      **/
     template<typename ActionsIterator, typename AnswerIterator>
     TreeNode<T> *
-    performActions(TreeNode<T> *curRoot, ActionsIterator firstAction, ActionsIterator lastAction, AnswerIterator retFirst,
+    performActions(TreeNode<T> *curRoot, ActionsIterator firstAction, ActionsIterator lastAction,
+                   AnswerIterator retFirst,
                    AnswerIterator retLast) {
-        if(firstAction == lastAction) return curRoot;
+        if (firstAction == lastAction) return curRoot;
         if (curRoot == nullptr) return createTree(firstAction, lastAction, retFirst, retLast);
 
-
         T curValue = curRoot->value;
-        double noRotate = 0;   //TODO(compute new weights)
-        double leftRotate = 0;  //TODO(compute new weights)
-        double rightRotate = 0; //TODO(compute new weights)
 
-        if (leftRotate < noRotate || rightRotate < noRotate) {
-            if (leftRotate < rightRotate) {
-                curRoot = performLeftRotate(curRoot);
-            } else {
-                curRoot = performRightRotate(curRoot);
-            }
+        //divide actions array to actions on left subtree and actions on right subtree
+        ActionsIterator leftFirst = firstAction;
+        ActionsIterator rightFirst = std::lower_bound(firstAction, lastAction, Action<T>(curValue, ActionType::INSERT));
+
+        //checking if we need any rotations
+        double deltaPhiLeft = calculateDeltaPhiLeft(curRoot, firstAction, rightFirst,
+                                                    rightFirst + ((*rightFirst).value == curValue ? 1 : 0), lastAction);
+        double deltaPhiRight = calculateDeltaPhiRight(curRoot, firstAction, rightFirst,
+                                                      rightFirst + ((*rightFirst).value == curValue ? 1 : 0), lastAction);
+
+        if (deltaPhiLeft > 0) {
+            curRoot = performLeftRotate(curRoot);
+            return performActions(curRoot, firstAction, lastAction, retFirst, retLast);
+        }
+        if (deltaPhiRight > 0) {
+            curRoot = performRightRotate(curRoot);
             return performActions(curRoot, firstAction, lastAction, retFirst, retLast);
         }
 
-        ActionsIterator leftFirst = firstAction;
-        ActionsIterator rightFirst = std::partition(firstAction, lastAction, [&curValue](const auto &action) {
-            return action.value < curValue;
-        });
+        curRoot->weight += lastAction - firstAction;
 
+        //try to perform action in current root
         ActionsIterator leftLast = rightFirst;
         if (rightFirst != lastAction) {
             Action<T> a = *rightFirst;
             AnswerIterator it = retFirst + (rightFirst - firstAction);
             if (a.value == curValue) {
                 performAction(a, it, curRoot);
-                curRoot->weight++;
                 if (rightFirst == firstAction && std::next(rightFirst) == lastAction) {
-                    cout << (*rightFirst).value << "\n";
                     return curRoot;
                 }
                 rightFirst = std::next(rightFirst);
@@ -65,15 +69,16 @@ private:
         TreeNode<T> *leftChild = curRoot->left;
         TreeNode<T> *rightChild = curRoot->right;
 
-        int oldCurWeight = curRoot->getVertexWeight();
+
         sptl::fork2([this, &curRoot, &leftFirst, &leftLast, &retFirst] {
             curRoot->left = performActions(curRoot->left, leftFirst, leftLast, retFirst,
                                            retFirst + (leftLast - leftFirst));
         }, [this, &curRoot, &rightFirst, &lastAction, &retFirst, &firstAction, &retLast] {
-            curRoot->right = performActions(curRoot->right, rightFirst, lastAction, retFirst + (rightFirst - firstAction), retLast);
+            curRoot->right = performActions(curRoot->right, rightFirst, lastAction,
+                                            retFirst + (rightFirst - firstAction), retLast);
         });
-        curRoot->weight = oldCurWeight + (curRoot->left == nullptr ? 0 : curRoot->left->weight) +
-                          (curRoot->right == nullptr ? 0 : curRoot->right->weight);
+
+
         return curRoot;
     }
 
@@ -126,6 +131,7 @@ private:
         ActionsIterator mid = first + (last - first) / 2;
         *(retFirst + (mid - first)) = true;
         auto *newRoot = new TreeNode<T>((*mid).value);
+        newRoot->weight += last - first - 1;
         sptl::fork2([this, &newRoot, &first, &mid, &retFirst] {
             newRoot->left = createTree(first, mid, retFirst, (retFirst + (mid - first)));
         }, [this, &newRoot, &mid, &last, &first, &retFirst, &retLast] {
@@ -149,6 +155,48 @@ private:
                 curRoot->isDeleted = true;
                 break;
         }
+    }
+
+    template<typename Iterator>
+    double calculateDeltaPhiLeft(TreeNode<T> *curRoot, Iterator leftFirst, Iterator leftLast, Iterator rightFirst,
+                                 Iterator rightLast) {
+        // deltaPhi = r'(z) - r(y)
+        if (curRoot->left == nullptr) return 0;
+
+        double r_y = log(curRoot->left->weight + (leftLast - leftFirst));
+
+        double r_z = curRoot->weight - curRoot->left->weight + (rightLast - rightFirst);
+
+        T leftValue = curRoot->left->value;
+
+        Iterator cFirst = std::lower_bound(leftFirst, leftLast, Action<T>(leftValue, ActionType::INSERT));
+        if ((*cFirst).value == leftValue) {
+            cFirst++;
+        }
+
+        r_z += (curRoot->left->right == nullptr ? 0 : curRoot->left->right->weight) + (leftLast - cFirst);
+        r_z = log(r_z);
+        return r_z - r_y;
+    }
+
+    template<typename Iterator>
+    double calculateDeltaPhiRight(TreeNode<T> *curRoot, Iterator leftFirst, Iterator leftLast, Iterator rightFirst,
+                                  Iterator rightLast) {
+        //deltaPhi = r'(z) - r(y)
+        if (curRoot->right == nullptr) return 0;
+
+        double r_y = log(curRoot->right->weight + (rightLast - rightFirst));
+
+        double r_z = curRoot->weight - curRoot->right->weight + (leftLast - leftFirst);
+
+        T rightValue = curRoot->right->value;
+
+        Iterator cLast = std::lower_bound(rightFirst, rightLast, Action<T>(rightValue, ActionType::INSERT));
+
+        r_z += (curRoot->right->left == nullptr ? 0 : curRoot->right->left->weight) + (cLast - rightFirst);
+        r_z = log(r_z);
+        return r_z - r_y;
+
     }
 
 public:
