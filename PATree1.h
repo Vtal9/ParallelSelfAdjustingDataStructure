@@ -2,7 +2,6 @@
 #define DIPLOM_PATREE1_H
 
 #include <algorithm>
-#include "PATree.h"
 #include "TreeNode.h"
 #include "Action.h"
 #include "spgranularity.hpp"
@@ -39,7 +38,8 @@ private:
         double deltaPhiLeft = calculateDeltaPhiLeft(curRoot, firstAction, rightFirst,
                                                     rightFirst + ((*rightFirst).value == curValue ? 1 : 0), lastAction);
         double deltaPhiRight = calculateDeltaPhiRight(curRoot, firstAction, rightFirst,
-                                                      rightFirst + ((*rightFirst).value == curValue ? 1 : 0), lastAction);
+                                                      rightFirst + ((*rightFirst).value == curValue ? 1 : 0),
+                                                      lastAction);
 
         if (deltaPhiLeft > 0) {
             curRoot = performLeftRotate(curRoot);
@@ -66,18 +66,37 @@ private:
             }
         }
 
-        TreeNode<T> *leftChild = curRoot->left;
-        TreeNode<T> *rightChild = curRoot->right;
 
+        sptl::spguard(
+                [&] {
+                    int m = lastAction - firstAction;
+                    int n = curRoot->size;
+                    return log(m) * log(n) + log(n);
+                },
+                [&] {
+                    //parallel body
+                    sptl::fork2([this, &curRoot, &leftFirst, &leftLast, &retFirst] {
+                        curRoot->left = performActions(curRoot->left, leftFirst, leftLast, retFirst,
+                                                       retFirst + (leftLast - leftFirst));
+                    }, [this, &curRoot, &rightFirst, &lastAction, &retFirst, &firstAction, &retLast] {
+                        curRoot->right = performActions(curRoot->right, rightFirst, lastAction,
+                                                        retFirst + (rightFirst - firstAction), retLast);
+                    });
+                },
+                [&] {
+                    //sequential body
+                    curRoot->left = performActions(curRoot->left, leftFirst, leftLast, retFirst,
+                                                   retFirst + (leftLast - leftFirst));
+                    curRoot->right = performActions(curRoot->right, rightFirst, lastAction,
+                                                    retFirst + (rightFirst - firstAction), retLast);
+                }
+        );
 
-        sptl::fork2([this, &curRoot, &leftFirst, &leftLast, &retFirst] {
-            curRoot->left = performActions(curRoot->left, leftFirst, leftLast, retFirst,
-                                           retFirst + (leftLast - leftFirst));
-        }, [this, &curRoot, &rightFirst, &lastAction, &retFirst, &firstAction, &retLast] {
-            curRoot->right = performActions(curRoot->right, rightFirst, lastAction,
-                                            retFirst + (rightFirst - firstAction), retLast);
-        });
+        curRoot->size = 1 + (curRoot->left == nullptr ? 0 : curRoot->left->size) +
+                        (curRoot->right == nullptr ? 0 : curRoot->right->size);
 
+        curRoot->deleted = (curRoot->isDeleted ? 1 : 0) + (curRoot->left == nullptr ? 0 : curRoot->left->deleted) +
+                           (curRoot->right == nullptr ? 0 : curRoot->right->deleted);
 
         return curRoot;
     }
@@ -99,6 +118,18 @@ private:
         right->left = curRoot;
         right->weight =
                 oldRightChildWeight + right->left->weight + (right->right == nullptr ? 0 : right->right->weight);
+
+        //update deleted and size of old root
+        curRoot->size = 1 + (curRoot->left == nullptr ? 0 : curRoot->left->size) +
+                        (curRoot->right == nullptr ? 0 : curRoot->right->size);
+        curRoot->deleted = (curRoot->isDeleted ? 1 : 0) + (curRoot->left == nullptr ? 0 : curRoot->left->deleted) +
+                           (curRoot->right == nullptr ? 0 : curRoot->right->deleted);
+
+        //update deleted and size of right
+        right->size = 1 + (right->right == nullptr ? 0 : right->right->size) + right->left->size;
+        right->deleted = (right->isDeleted ? 1 : 0) + (right->right == nullptr ? 0 : right->right->deleted) +
+                         right->left->deleted;
+
         return right;
     }
 
@@ -120,6 +151,17 @@ private:
         left->weight =
                 oldLeftChildWeight + left->right->weight + (left->left == nullptr ? 0 : left->left->weight);
 
+        //update deleted and size of old root
+        curRoot->size = 1 + (curRoot->left == nullptr ? 0 : curRoot->left->size) +
+                        (curRoot->right == nullptr ? 0 : curRoot->right->size);
+        curRoot->deleted = (curRoot->isDeleted ? 1 : 0) + (curRoot->left == nullptr ? 0 : curRoot->left->deleted) +
+                           (curRoot->right == nullptr ? 0 : curRoot->right->deleted);
+
+        //update deleted and size of left
+        left->size = 1 + (left->left == nullptr ? 0 : left->left->size) + left->right->size;
+        left->deleted = (left->isDeleted ? 1 : 0) + (left->left == nullptr ? 0 : left->left->deleted) +
+                        left->right->size;
+
         return left;
     }
 
@@ -129,14 +171,32 @@ private:
     createTree(ActionsIterator first, ActionsIterator last, AnswerIterator retFirst, AnswerIterator retLast) {
         if (first == last) return nullptr;
         ActionsIterator mid = first + (last - first) / 2;
-        *(retFirst + (mid - first)) = true;
         auto *newRoot = new TreeNode<T>((*mid).value);
+
+        *(retFirst + (mid - first)) = (*mid).actionType == ActionType::INSERT;
+
         newRoot->weight += last - first - 1;
-        sptl::fork2([this, &newRoot, &first, &mid, &retFirst] {
-            newRoot->left = createTree(first, mid, retFirst, (retFirst + (mid - first)));
-        }, [this, &newRoot, &mid, &last, &first, &retFirst, &retLast] {
-            newRoot->right = createTree(mid + 1, last, retFirst + (mid - first) + 1, retLast);
-        });
+
+        int n = last - first;
+        sptl::spguard([&] { return n; },
+                      [&] {
+                          //parallel body
+                          sptl::fork2([this, &newRoot, &first, &mid, &retFirst] {
+                              newRoot->left = createTree(first, mid, retFirst, (retFirst + (mid - first)));
+                          }, [this, &newRoot, &mid, &last, &first, &retFirst, &retLast] {
+                              newRoot->right = createTree(mid + 1, last, retFirst + (mid - first) + 1, retLast);
+                          });
+                      },
+                      [&] {
+                          //sequential body
+                          newRoot->left = createTree(first, mid, retFirst, (retFirst + (mid - first)));
+                          newRoot->right = createTree(mid + 1, last, retFirst + (mid - first) + 1, retLast);
+                      });
+        newRoot->size = 1 + (newRoot->left == nullptr ? 0 : newRoot->left->size) +
+                        (newRoot->right == nullptr ? 0 : newRoot->right->size);
+
+        newRoot->deleted = (newRoot->isDeleted ? 1 : 0) + (newRoot->left == nullptr ? 0 : newRoot->left->deleted) +
+                           (newRoot->right == nullptr ? 0 : newRoot->right->deleted);
         return newRoot;
     }
 
@@ -145,6 +205,7 @@ private:
         switch (a.actionType) {
             case ActionType::INSERT:
                 *it = curRoot->isDeleted;
+                curRoot->deleted -= curRoot->isDeleted ? 1 : 0;
                 curRoot->isDeleted = false;
                 break;
             case ActionType::LOOKUP:
@@ -152,7 +213,7 @@ private:
                 break;
             case ActionType::REMOVE:
                 *it = !curRoot->isDeleted;
-                curRoot->isDeleted = true;
+                curRoot->deleteVertex();
                 break;
         }
     }
