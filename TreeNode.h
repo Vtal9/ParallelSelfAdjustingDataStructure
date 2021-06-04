@@ -33,6 +33,11 @@ struct TreeNode {
         deleted = (left == nullptr ? 0 : left->deleted) + (right == nullptr ? 0 : right->deleted);
     }
 
+    ~TreeNode(){
+        delete left;
+        delete right;
+    }
+
     void deleteVertex(){
         deleted += isDeleted ? 0 : 1;
         isDeleted = true;
@@ -42,6 +47,7 @@ struct TreeNode {
         return weight - (left == nullptr ? 0 : left->weight) -
                (right == nullptr ? 0 : right->weight);
     }
+
 };
 
 

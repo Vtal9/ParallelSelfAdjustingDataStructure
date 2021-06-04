@@ -1,3 +1,5 @@
 add_subdirectory(cmdline)
 add_subdirectory(sptl)
 add_subdirectory(chunkedseq)
+add_subdirectory(pbbs-pctl)
+add_subdirectory(pctl)

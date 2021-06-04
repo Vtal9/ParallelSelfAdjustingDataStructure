@@ -4,7 +4,7 @@
 #include <algorithm>
 #include "TreeNode.h"
 #include "Action.h"
-#include "spgranularity.hpp"
+#include "granularity.hpp"
 #include <iostream>
 #include <cmath>
 
@@ -13,6 +13,8 @@ using std::cout;
 template<typename T>
 class PATree1 {
 private:
+    const  double EPS = 1e-5;
+    pasl::pctl::granularity::control_by_prediction controlByPrediction;
     /*
      curRoot - current root of the tree
      first - begin of the actions list
@@ -41,12 +43,24 @@ private:
                                                       rightFirst + ((*rightFirst).value == curValue ? 1 : 0),
                                                       lastAction);
 
-        if (deltaPhiLeft > 0) {
-            curRoot = performLeftRotate(curRoot);
+        if (deltaPhiRight < -EPS) {
+            if(curRoot == this->root){
+                curRoot = performLeftRotate(curRoot);
+                this->root = curRoot;
+            }
+            else{
+                curRoot = performLeftRotate(curRoot);
+            }
             return performActions(curRoot, firstAction, lastAction, retFirst, retLast);
         }
-        if (deltaPhiRight > 0) {
-            curRoot = performRightRotate(curRoot);
+        if (deltaPhiLeft < -EPS) {
+            if(curRoot == this->root){
+                curRoot = performRightRotate(curRoot);
+                this->root = curRoot;
+            }
+            else{
+                curRoot = performRightRotate(curRoot);
+            }
             return performActions(curRoot, firstAction, lastAction, retFirst, retLast);
         }
 
@@ -66,8 +80,7 @@ private:
             }
         }
 
-
-        sptl::spguard(
+        pasl::pctl::granularity::cstmt(controlByPrediction,
                 [&] {
                     int m = lastAction - firstAction;
                     int n = curRoot->size;
@@ -75,7 +88,7 @@ private:
                 },
                 [&] {
                     //parallel body
-                    sptl::fork2([this, &curRoot, &leftFirst, &leftLast, &retFirst] {
+                    pasl::pctl::granularity::fork2([this, &curRoot, &leftFirst, &leftLast, &retFirst] {
                         curRoot->left = performActions(curRoot->left, leftFirst, leftLast, retFirst,
                                                        retFirst + (leftLast - leftFirst));
                     }, [this, &curRoot, &rightFirst, &lastAction, &retFirst, &firstAction, &retLast] {
@@ -101,6 +114,7 @@ private:
         return curRoot;
     }
 
+    //right child becomes root
     TreeNode<T> *performLeftRotate(TreeNode<T> *curRoot) {
         if (!curRoot || !curRoot->right) return curRoot;
         int oldRootWeight = curRoot->getVertexWeight();
@@ -133,6 +147,7 @@ private:
         return right;
     }
 
+    //left child becomes root
     TreeNode<T> *performRightRotate(TreeNode<T> *curRoot) {
         if (!curRoot || !curRoot->left) return curRoot;
         int oldRootWeight = curRoot->getVertexWeight();
@@ -178,10 +193,10 @@ private:
         newRoot->weight += last - first - 1;
 
         int n = last - first;
-        sptl::spguard([&] { return n; },
+        pasl::pctl::granularity::cstmt(controlByPrediction, [&] { return n; },
                       [&] {
                           //parallel body
-                          sptl::fork2([this, &newRoot, &first, &mid, &retFirst] {
+                          pasl::pctl::granularity::fork2([this, &newRoot, &first, &mid, &retFirst] {
                               newRoot->left = createTree(first, mid, retFirst, (retFirst + (mid - first)));
                           }, [this, &newRoot, &mid, &last, &first, &retFirst, &retLast] {
                               newRoot->right = createTree(mid + 1, last, retFirst + (mid - first) + 1, retLast);
@@ -218,13 +233,14 @@ private:
         }
     }
 
+    //calculate difference of potentials after left rotation
     template<typename Iterator>
     double calculateDeltaPhiLeft(TreeNode<T> *curRoot, Iterator leftFirst, Iterator leftLast, Iterator rightFirst,
                                  Iterator rightLast) {
         // deltaPhi = r'(z) - r(y)
         if (curRoot->left == nullptr) return 0;
 
-        double r_y = log(curRoot->left->weight + (leftLast - leftFirst));
+        double r_y = log2(curRoot->left->weight + (leftLast - leftFirst));
 
         double r_z = curRoot->weight - curRoot->left->weight + (rightLast - rightFirst);
 
@@ -236,17 +252,18 @@ private:
         }
 
         r_z += (curRoot->left->right == nullptr ? 0 : curRoot->left->right->weight) + (leftLast - cFirst);
-        r_z = log(r_z);
+        r_z = log2(r_z);
         return r_z - r_y;
     }
 
+    //calculate difference of potentials after right rotation
     template<typename Iterator>
     double calculateDeltaPhiRight(TreeNode<T> *curRoot, Iterator leftFirst, Iterator leftLast, Iterator rightFirst,
                                   Iterator rightLast) {
         //deltaPhi = r'(z) - r(y)
         if (curRoot->right == nullptr) return 0;
 
-        double r_y = log(curRoot->right->weight + (rightLast - rightFirst));
+        double r_y = log2(curRoot->right->weight + (rightLast - rightFirst));
 
         double r_z = curRoot->weight - curRoot->right->weight + (leftLast - leftFirst);
 
@@ -255,7 +272,7 @@ private:
         Iterator cLast = std::lower_bound(rightFirst, rightLast, Action<T>(rightValue, ActionType::INSERT));
 
         r_z += (curRoot->right->left == nullptr ? 0 : curRoot->right->left->weight) + (cLast - rightFirst);
-        r_z = log(r_z);
+        r_z = log2(r_z);
         return r_z - r_y;
 
     }
@@ -266,11 +283,15 @@ public:
     template<typename Iterator>
     std::vector<bool> performActionsInParallel(Iterator actionsBegin, Iterator actionsEnd) {
         std::vector<bool> answers(actionsEnd - actionsBegin);
+        std::sort(actionsBegin, actionsEnd);
         root = performActions(root, actionsBegin, actionsEnd, answers.begin(), answers.end());
         return answers;
     }
 
     PATree1() = default;
+    ~PATree1(){
+        delete root;
+    }
 };
 
 #endif //DIPLOM_PATREE1_H
