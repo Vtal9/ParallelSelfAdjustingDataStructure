@@ -25,12 +25,12 @@ int main(int argc, char **argv) {
 
 //    pbbs::launch(argc, argv, [&] {
 //        simpleVisualTest();
+//        testCorrectness();
+//
 //    });
 
-
-//    simpleVisualTest();
-    testCorrectness();
-
+        simpleVisualTest();
+        testCorrectness();
     return 0;
 }
 
@@ -44,8 +44,8 @@ void testCorrectness() {
         for (int i = 0; i < 100; ++i) {
             vector<Action<int>> actions;
             for (int k = 0; k < 10; ++k) {
-                int it = rand();
-                cout << it << "\n";
+                int it = rand() % 10000;
+//                cout << it << "\n";
                 actions.emplace_back(it, ActionType::INSERT);
                 targetSet.insert(it);
             }
@@ -53,6 +53,8 @@ void testCorrectness() {
         }
 
         cout << "emplace ended\n";
+//        printTree(tree->root, "");
+
         //lookup
         cout << "lookup\n";
         int k = 0;
@@ -60,41 +62,52 @@ void testCorrectness() {
         for (auto it: targetSet) {
             actions.emplace_back(it, ActionType::LOOKUP);
             k++;
-            if (k % 100 == 0) {
+            if (k % 10 == 0) {
                 auto answers = tree->performActionsInParallel(actions.begin(), actions.end());
+
                 for (auto answ : answers) {
-                    assert(answ == true);
+                    if(!answ){
+                        cout << "???";
+                    }
+                    assert(answ);
                 }
-                k = 0;
+//                k = 0;
                 actions.clear();
             }
         }
         auto answers = tree->performActionsInParallel(actions.begin(), actions.end());
         for (auto answ : answers) {
-            assert(answ == true);
+            assert(answ);
         }
         cout << "lookup ended\n";
         //delete
         cout << "delete\n";
         actions.clear();
         k = 0;
+        std::set<int> removeSet;
         for (auto it : targetSet) {
             if (k % 2 == 0) {
                 actions.emplace_back(Action<int>(it, ActionType::REMOVE));
             }
+            removeSet.insert(it);
             k++;
-            if (k % 100 == 0) {
+            if (k % 10 == 0) {
                 answers = tree->performActionsInParallel(actions.begin(), actions.end());
                 for (auto answ : answers) {
-                    assert(answ == true);
+                    assert(answ);
                 }
+                actions.clear();
             }
         }
         answers = tree->performActionsInParallel(actions.begin(), actions.end());
         for (auto answ : answers) {
-            assert(answ == true);
+            assert(answ);
+        }
+        for(auto it : removeSet){
+            targetSet.erase(it);
         }
         cout << "delete ended\n";
+        cout << "iteration " << j << " ended==============\n";
     }
 
 

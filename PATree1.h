@@ -13,8 +13,9 @@ using std::cout;
 template<typename T>
 class PATree1 {
 private:
-    const  double EPS = 1e-5;
+    const double EPS = 1e-5;
     pasl::pctl::granularity::control_by_prediction controlByPrediction;
+
     /*
      curRoot - current root of the tree
      first - begin of the actions list
@@ -35,31 +36,29 @@ private:
         //divide actions array to actions on left subtree and actions on right subtree
         ActionsIterator leftFirst = firstAction;
         ActionsIterator rightFirst = std::lower_bound(firstAction, lastAction, Action<T>(curValue, ActionType::INSERT));
-
+        int n = lastAction - firstAction;
         //checking if we need any rotations
         double deltaPhiLeft = calculateDeltaPhiLeft(curRoot, firstAction, rightFirst,
-                                                    rightFirst + ((*rightFirst).value == curValue ? 1 : 0), lastAction);
+                                                    rightFirst, lastAction);
         double deltaPhiRight = calculateDeltaPhiRight(curRoot, firstAction, rightFirst,
-                                                      rightFirst + ((*rightFirst).value == curValue ? 1 : 0),
+                                                      rightFirst,
                                                       lastAction);
-
-        if (deltaPhiRight < -EPS) {
-            if(curRoot == this->root){
-                curRoot = performLeftRotate(curRoot);
+        // perform rotation if needed
+        if (deltaPhiRight < -EPS && deltaPhiRight < deltaPhiLeft) {
+            if (curRoot == this->root) {
+                curRoot = performRightRotate(curRoot);
                 this->root = curRoot;
-            }
-            else{
-                curRoot = performLeftRotate(curRoot);
+            } else {
+                curRoot = performRightRotate(curRoot);
             }
             return performActions(curRoot, firstAction, lastAction, retFirst, retLast);
         }
         if (deltaPhiLeft < -EPS) {
-            if(curRoot == this->root){
-                curRoot = performRightRotate(curRoot);
+            if (curRoot == this->root) {
+                curRoot = performLeftRotate(curRoot);
                 this->root = curRoot;
-            }
-            else{
-                curRoot = performRightRotate(curRoot);
+            } else {
+                curRoot = performLeftRotate(curRoot);
             }
             return performActions(curRoot, firstAction, lastAction, retFirst, retLast);
         }
@@ -81,28 +80,37 @@ private:
         }
 
         pasl::pctl::granularity::cstmt(controlByPrediction,
-                [&] {
-                    int m = lastAction - firstAction;
-                    int n = curRoot->size;
-                    return log(m) * log(n) + log(n);
-                },
-                [&] {
-                    //parallel body
-                    pasl::pctl::granularity::fork2([this, &curRoot, &leftFirst, &leftLast, &retFirst] {
-                        curRoot->left = performActions(curRoot->left, leftFirst, leftLast, retFirst,
-                                                       retFirst + (leftLast - leftFirst));
-                    }, [this, &curRoot, &rightFirst, &lastAction, &retFirst, &firstAction, &retLast] {
-                        curRoot->right = performActions(curRoot->right, rightFirst, lastAction,
-                                                        retFirst + (rightFirst - firstAction), retLast);
-                    });
-                },
-                [&] {
-                    //sequential body
-                    curRoot->left = performActions(curRoot->left, leftFirst, leftLast, retFirst,
-                                                   retFirst + (leftLast - leftFirst));
-                    curRoot->right = performActions(curRoot->right, rightFirst, lastAction,
-                                                    retFirst + (rightFirst - firstAction), retLast);
-                }
+                                       [&] {
+                                           int m = lastAction - firstAction;
+                                           int n = curRoot->size;
+                                           return log(m) * log(n) + log(n);
+                                       },
+                                       [&] {
+                                           //parallel body
+                                           pasl::pctl::granularity::fork2(
+                                                   [this, &curRoot, &leftFirst, &leftLast, &retFirst] {
+                                                       curRoot->left = performActions(curRoot->left,
+                                                                                      leftFirst,
+                                                                                      leftLast,
+                                                                                      retFirst,
+                                                                                      retFirst + (leftLast - leftFirst));
+                                                   },
+                                                   [this, &curRoot, &rightFirst, &lastAction, &retFirst, &firstAction, &retLast] {
+                                                       curRoot->right = performActions(curRoot->right,
+                                                                                       rightFirst,
+                                                                                       lastAction,
+                                                                                       retFirst + (rightFirst - firstAction),
+                                                                                       retLast);
+                                                   });
+                                       },
+                                       [&] {
+                                           //sequential body
+                                           curRoot->left = performActions(curRoot->left, leftFirst, leftLast, retFirst,
+                                                                          retFirst + (leftLast - leftFirst));
+                                           curRoot->right = performActions(curRoot->right, rightFirst, lastAction,
+                                                                           retFirst + (rightFirst - firstAction),
+                                                                           retLast);
+                                       }
         );
 
         curRoot->size = 1 + (curRoot->left == nullptr ? 0 : curRoot->left->size) +
@@ -114,8 +122,11 @@ private:
         return curRoot;
     }
 
-    //right child becomes root
+    /**
+     * current root becomes left child
+     */
     TreeNode<T> *performLeftRotate(TreeNode<T> *curRoot) {
+        // right child becomes new root so its must be not null
         if (!curRoot || !curRoot->right) return curRoot;
         int oldRootWeight = curRoot->getVertexWeight();
 
@@ -147,20 +158,22 @@ private:
         return right;
     }
 
-    //left child becomes root
+    /**
+     * current root becomes right child
+     */
     TreeNode<T> *performRightRotate(TreeNode<T> *curRoot) {
+        // left child becomes new root so its must be not null
         if (!curRoot || !curRoot->left) return curRoot;
+
         int oldRootWeight = curRoot->getVertexWeight();
 
         TreeNode<T> *left = curRoot->left;
 
         int oldLeftChildWeight = left->getVertexWeight();
 
-
         curRoot->left = left->right;
         curRoot->weight = oldRootWeight + (curRoot->left == nullptr ? 0 : curRoot->left->weight) +
                           (curRoot->right == nullptr ? 0 : curRoot->right->weight);
-
 
         left->right = curRoot;
         left->weight =
@@ -194,19 +207,22 @@ private:
 
         int n = last - first;
         pasl::pctl::granularity::cstmt(controlByPrediction, [&] { return n; },
-                      [&] {
-                          //parallel body
-                          pasl::pctl::granularity::fork2([this, &newRoot, &first, &mid, &retFirst] {
-                              newRoot->left = createTree(first, mid, retFirst, (retFirst + (mid - first)));
-                          }, [this, &newRoot, &mid, &last, &first, &retFirst, &retLast] {
-                              newRoot->right = createTree(mid + 1, last, retFirst + (mid - first) + 1, retLast);
-                          });
-                      },
-                      [&] {
-                          //sequential body
-                          newRoot->left = createTree(first, mid, retFirst, (retFirst + (mid - first)));
-                          newRoot->right = createTree(mid + 1, last, retFirst + (mid - first) + 1, retLast);
-                      });
+                                       [&] {
+                                           //parallel body
+                                           pasl::pctl::granularity::fork2([this, &newRoot, &first, &mid, &retFirst] {
+                                               newRoot->left = createTree(first, mid, retFirst,
+                                                                          (retFirst + (mid - first)));
+                                           }, [this, &newRoot, &mid, &last, &first, &retFirst, &retLast] {
+                                               newRoot->right = createTree(mid + 1, last, retFirst + (mid - first) + 1,
+                                                                           retLast);
+                                           });
+                                       },
+                                       [&] {
+                                           //sequential body
+                                           newRoot->left = createTree(first, mid, retFirst, (retFirst + (mid - first)));
+                                           newRoot->right = createTree(mid + 1, last, retFirst + (mid - first) + 1,
+                                                                       retLast);
+                                       });
         newRoot->size = 1 + (newRoot->left == nullptr ? 0 : newRoot->left->size) +
                         (newRoot->right == nullptr ? 0 : newRoot->right->size);
 
@@ -233,48 +249,82 @@ private:
         }
     }
 
-    //calculate difference of potentials after left rotation
+    /**
+    * calculate difference of potentials after left rotation
+    * left rotate := current root becomes left child
+    *             y
+    *           /   \
+    *         x      z
+    *       /  \   /   \
+    *     A     B C     D
+    * deltaPhi = r'(y) - r(z)
+    */
     template<typename Iterator>
     double calculateDeltaPhiLeft(TreeNode<T> *curRoot, Iterator leftFirst, Iterator leftLast, Iterator rightFirst,
                                  Iterator rightLast) {
-        // deltaPhi = r'(z) - r(y)
-        if (curRoot->left == nullptr) return 0;
-
-        double r_y = log2(curRoot->left->weight + (leftLast - leftFirst));
-
-        double r_z = curRoot->weight - curRoot->left->weight + (rightLast - rightFirst);
-
-        T leftValue = curRoot->left->value;
-
-        Iterator cFirst = std::lower_bound(leftFirst, leftLast, Action<T>(leftValue, ActionType::INSERT));
-        if ((*cFirst).value == leftValue) {
-            cFirst++;
-        }
-
-        r_z += (curRoot->left->right == nullptr ? 0 : curRoot->left->right->weight) + (leftLast - cFirst);
-        r_z = log2(r_z);
-        return r_z - r_y;
-    }
-
-    //calculate difference of potentials after right rotation
-    template<typename Iterator>
-    double calculateDeltaPhiRight(TreeNode<T> *curRoot, Iterator leftFirst, Iterator leftLast, Iterator rightFirst,
-                                  Iterator rightLast) {
-        //deltaPhi = r'(z) - r(y)
+        // right child becomes root, so its must be not null
         if (curRoot->right == nullptr) return 0;
 
-        double r_y = log2(curRoot->right->weight + (rightLast - rightFirst));
+        // find W'(C)
+        int W_C = (curRoot->right->left == nullptr ? 0 : curRoot->right->left->weight);
+        Iterator cActionsLast = std::lower_bound(rightFirst, rightLast,
+                                                 Action<T>(curRoot->right->value, ActionType::INSERT));
+        int sizeOfCSubtreeActions = cActionsLast - rightFirst;
+        int W_C_new = W_C + sizeOfCSubtreeActions;
 
-        double r_z = curRoot->weight - curRoot->right->weight + (leftLast - leftFirst);
+        // find w'(y)
+        int w_y = curRoot->getVertexWeight();
+        int w_y_new = w_y + ((*rightFirst).value == curRoot->value);
 
-        T rightValue = curRoot->right->value;
+        // find W'(x)
+        int W_left_new = (curRoot->left == nullptr ? 0 : curRoot->left->weight) + (leftLast - leftFirst);
 
-        Iterator cLast = std::lower_bound(rightFirst, rightLast, Action<T>(rightValue, ActionType::INSERT));
+        // r'(y) = log(W'(x) + w'(y) + W'(C))
+        double r_y = log2(W_left_new + W_C_new + w_y_new);
 
-        r_z += (curRoot->right->left == nullptr ? 0 : curRoot->right->left->weight) + (cLast - rightFirst);
-        r_z = log2(r_z);
-        return r_z - r_y;
+        // r(z)
+        double r_z = log2(curRoot->right->weight + (rightLast - rightFirst));
 
+        return r_y - r_z;
+    }
+
+/**
+    * calculate difference of potentials after right rotation
+    * right rotate := current root becomes right child
+    *             y
+    *           /   \
+    *         x      z
+    *       /  \   /   \
+    *     A     B C     D
+    * deltaPhi = r'(y) - r(x)
+    */    template<typename Iterator>
+    double calculateDeltaPhiRight(TreeNode<T> *curRoot, Iterator leftFirst, Iterator leftLast, Iterator rightFirst,
+                                  Iterator rightLast) {
+        // left child becomes root, so its must be not null
+        if (curRoot->left == nullptr) return 0;
+
+        // find W'(B)
+        int W_B = (curRoot->left->right == nullptr ? 0 : curRoot->left->right->weight);
+        Iterator bActionsFirst = std::lower_bound(leftFirst, leftLast,
+                                                  Action<T>(curRoot->left->value, ActionType::INSERT));
+        if ((*bActionsFirst).value == curRoot->left->value) bActionsFirst++;
+        int sizeOfBSubtreeActions = leftLast - bActionsFirst;
+        int W_B_new = W_B + sizeOfBSubtreeActions;
+
+        // find w'(y)
+        int w_y = curRoot->getVertexWeight();
+        int w_y_new = w_y + ((*rightFirst).value == curRoot->value);
+
+        // find W'(z)
+        int W_right_new = (curRoot->right == nullptr ? 0 : curRoot->right->weight) + (rightLast - rightFirst);
+
+        // r'(y) = log(W'(z) + w'(y) + W'(B))
+        double r_y_new = log2(W_right_new + w_y_new + W_B_new);
+
+        // r(x)
+        double r_x = log2(curRoot->left->weight + (leftLast - leftFirst));
+
+        return r_y_new - r_x;
     }
 
 public:
@@ -289,7 +339,8 @@ public:
     }
 
     PATree1() = default;
-    ~PATree1(){
+
+    ~PATree1() {
         delete root;
     }
 };
