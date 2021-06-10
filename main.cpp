@@ -4,7 +4,7 @@
 #include<random>
 #include<set>
 #include <memory>
-//#include "bench.hpp"
+#include "bench.hpp"
 
 void simpleVisualTest();
 void testCorrectness();
@@ -23,14 +23,14 @@ void printTree(TreeNode<T>* root, std::string path){
 
 int main(int argc, char **argv) {
 
-//    pbbs::launch(argc, argv, [&] {
-//        simpleVisualTest();
-//        testCorrectness();
-//
-//    });
-
+    pbbs::launch(argc, argv, [&] {
         simpleVisualTest();
         testCorrectness();
+
+    });
+
+//        simpleVisualTest();
+//        testCorrectness();
     return 0;
 }
 
