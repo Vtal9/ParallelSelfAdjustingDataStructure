@@ -23,7 +23,7 @@ void printTree(TreeNode<T>* root, std::string path){
 
 int main(int argc, char **argv) {
 
-    pbbs::launch(argc, argv, [&] {
+    pbbs::launch(argc, argv, [&] (pbbs::measured_type measure) {
         simpleVisualTest();
         testCorrectness();
 
