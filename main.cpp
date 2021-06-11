@@ -135,6 +135,7 @@ void timeTest(int dev) {
 
     for(int i = 0; i < 100; ++i) {
         vector<Action<int>> actions = generateActions(100, distribution);
+        std::sort(actions.begin(), actions.end()); //O(nlog(n))
         auto start = std::chrono::high_resolution_clock::now();
         tree->performActionsInParallel(actions.begin(), actions.end());
         auto end = std::chrono::high_resolution_clock::now();
