@@ -8,7 +8,7 @@
 #include <time.h>
 
 void simpleVisualTest();
-void timeTest(double dev);
+void timeTest(int dev);
 void testCorrectness();
 
 using std::vector;
@@ -117,18 +117,19 @@ void testCorrectness() {
 
 }
 
-vector<Action<int>> generateActions(int m, std::normal_distribution<double> &distribution) {
-    std::default_random_engine generator;
+vector<Action<int>> generateActions(int m, std::normal_distribution<int> &distribution) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
     vector<Action<int>> actions;
     for (int i = 0; i < m; ++i) {
-        int number = distribution(generator);
+        int number = distribution(gen);
         actions.emplace_back(number, ActionType::LOOKUP);
     }
     return actions;
 }
 
-void timeTest(double dev) {
-    std::normal_distribution<double> distribution(0, dev);
+void timeTest(int dev) {
+    std::normal_distribution<int> distribution(0, dev);
     auto tree = std::make_shared<PATree1<int>>();
     vector<long> ns;
     vector<long long> durations;
