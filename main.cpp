@@ -5,7 +5,7 @@
 #include<set>
 #include <memory>
 #include "bench.hpp"
-#include <time.h>
+#include <ctime>
 
 void simpleVisualTest();
 void timeTest(int dev);
@@ -28,10 +28,10 @@ int main(int argc, char **argv) {
     pbbs::launch(argc, argv, [&](const pbbs::measured_type &measure) {
         simpleVisualTest();
         testCorrectness();
-        timeTest(100);
-        timeTest(1000);
         timeTest(10000);
         timeTest(100000);
+        timeTest(1000000);
+        timeTest(10000000);
     });
 
 //        simpleVisualTest();
@@ -40,7 +40,7 @@ int main(int argc, char **argv) {
 }
 
 void testCorrectness() {
-    auto tree = std::make_shared<PATree1<int>>();
+    auto tree = std::make_shared<PATree1<double>>();
     std::set<int> targetSet;
     for (int j = 0; j < 10; ++j) {
         //emplace
@@ -117,7 +117,7 @@ void testCorrectness() {
 
 }
 
-vector<Action<int>> generateActions(int m, std::normal_distribution<int> &distribution) {
+vector<Action<int>> generateActions(int m, std::normal_distribution<double> &distribution) {
     std::random_device rd;
     std::mt19937 gen(rd());
     vector<Action<int>> actions;
@@ -129,7 +129,7 @@ vector<Action<int>> generateActions(int m, std::normal_distribution<int> &distri
 }
 
 void timeTest(int dev) {
-    std::normal_distribution<int> distribution(0, dev);
+    std::normal_distribution<double> distribution(0, dev);
     auto tree = std::make_shared<PATree1<int>>();
     vector<long> ns;
     vector<long long> durations;
