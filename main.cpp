@@ -28,7 +28,10 @@ int main(int argc, char **argv) {
     pbbs::launch(argc, argv, [&](const pbbs::measured_type &measure) {
         simpleVisualTest();
         testCorrectness();
+        timeTest(100);
         timeTest(1000);
+        timeTest(10000);
+        timeTest(100000);
     });
 
 //        simpleVisualTest();
