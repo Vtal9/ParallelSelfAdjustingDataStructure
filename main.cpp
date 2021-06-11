@@ -5,7 +5,6 @@
 #include<set>
 #include <memory>
 #include "bench.hpp"
-#include <ctime>
 
 void simpleVisualTest();
 void timeTest(int dev);
@@ -40,7 +39,7 @@ int main(int argc, char **argv) {
 }
 
 void testCorrectness() {
-    auto tree = std::make_shared<PATree1<double>>();
+    auto tree = std::make_shared<PATree1<int>>();
     std::set<int> targetSet;
     for (int j = 0; j < 10; ++j) {
         //emplace
