@@ -333,6 +333,7 @@ public:
     template<typename Iterator>
     std::vector<bool> performActionsInParallel(Iterator actionsBegin, Iterator actionsEnd) {
         std::vector<bool> answers(actionsEnd - actionsBegin); //O(m)
+//        std::sort(actionsBegin, actionsEnd); //O(nlog(n))
         root = performActions(root, actionsBegin, actionsEnd, answers.begin(), answers.end());
         return answers;
     }

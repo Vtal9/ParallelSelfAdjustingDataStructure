@@ -52,6 +52,7 @@ void testCorrectness() {
                 actions.emplace_back(it, ActionType::INSERT);
                 targetSet.insert(it);
             }
+            std::sort(actions.begin(), actions.end());
             tree->performActionsInParallel(actions.begin(), actions.end());
         }
 
@@ -66,6 +67,7 @@ void testCorrectness() {
             actions.emplace_back(it, ActionType::LOOKUP);
             k++;
             if (k % 10 == 0) {
+                std::sort(actions.begin(), actions.end());
                 auto answers = tree->performActionsInParallel(actions.begin(), actions.end());
 
                 for (auto answ : answers) {
@@ -78,6 +80,7 @@ void testCorrectness() {
                 actions.clear();
             }
         }
+        std::sort(actions.begin(), actions.end());
         auto answers = tree->performActionsInParallel(actions.begin(), actions.end());
         for (auto answ : answers) {
             assert(answ);
@@ -95,6 +98,7 @@ void testCorrectness() {
             removeSet.insert(it);
             k++;
             if (k % 10 == 0) {
+                std::sort(actions.begin(), actions.end());
                 answers = tree->performActionsInParallel(actions.begin(), actions.end());
                 for (auto answ : answers) {
                     assert(answ);
@@ -102,6 +106,7 @@ void testCorrectness() {
                 actions.clear();
             }
         }
+        std::sort(actions.begin(), actions.end());
         answers = tree->performActionsInParallel(actions.begin(), actions.end());
         for (auto answ : answers) {
             assert(answ);
@@ -166,11 +171,13 @@ void simpleVisualTest() {
             Action<int>(3, ActionType::INSERT),
             Action<int>(2, ActionType::INSERT),
             Action<int>(1, ActionType::INSERT)};
+    std::sort(actions.begin(), actions.end());
     answers = tree->performActionsInParallel(actions.begin(), actions.end());
     printTree(tree->root, "root");
     cout << "---------------------------------\n";
 
     std::vector<Action<int>> actions1 = {Action<int>(4, ActionType::INSERT)};
+    std::sort(actions1.begin(), actions1.end());
     answers = tree->performActionsInParallel(actions1.begin(), actions1.end());
     printTree(tree->root, "root");
 
@@ -178,6 +185,7 @@ void simpleVisualTest() {
 
 
     std::vector<Action<int>> actions2 = {Action<int>(4, ActionType::LOOKUP)};
+    std::sort(actions2.begin(), actions2.end());
     answers = tree->performActionsInParallel(actions2.begin(), actions2.end());
     printTree(tree->root, "root");
 
@@ -188,6 +196,7 @@ void simpleVisualTest() {
                                          Action<int>(-1, ActionType::INSERT),
                                          Action<int>(0, ActionType::INSERT),
                                          Action<int>(7, ActionType::INSERT)};
+    std::sort(actions3.begin(), actions3.end());
     answers = tree->performActionsInParallel(actions3.begin(), actions3.end());
     cout << "---------------------------------\n";
     printTree(tree->root, "root");
