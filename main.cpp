@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
     pbbs::launch(argc, argv, [&](const pbbs::measured_type &measure) {
         simpleVisualTest();
         testCorrectness();
-        timeTest(100);
+        timeTest(1000);
     });
 
 //        simpleVisualTest();
@@ -130,7 +130,7 @@ void timeTest(double dev) {
     vector<long> ns;
     vector<long long> durations;
 
-    for(int i = 0; i < 1000; ++i) {
+    for(int i = 0; i < 100; ++i) {
         vector<Action<int>> actions = generateActions(100, distribution);
         auto start = std::chrono::high_resolution_clock::now();
         tree->performActionsInParallel(actions.begin(), actions.end());
@@ -140,13 +140,13 @@ void timeTest(double dev) {
         ns.push_back(tree->root->size);
     }
     cout << "dev = " << dev << std::endl;
-    cout << "ns = [" << ns[0] << " ,";
+    cout << "ns = [" << ns[0];
     for(int i = 1; i < ns.size(); ++i){
         cout << " ," << ns[i];
     }
     cout << "]\n";
 
-    cout << "durations = [" << durations[0] << " ,";
+    cout << "durations = [" << durations[0];
     for(int i = 1; i < durations.size(); ++i){
         cout << " ," << durations[i];
     }
