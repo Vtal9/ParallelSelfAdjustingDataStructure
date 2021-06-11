@@ -5,16 +5,18 @@
 #include<set>
 #include <memory>
 #include "bench.hpp"
+#include <time.h>
 
 void simpleVisualTest();
+void timeTest(double dev);
 void testCorrectness();
 
 using std::vector;
 using std::cout;
 
-template<typename  T>
-void printTree(TreeNode<T>* root, std::string path){
-    if(root == nullptr) return;
+template<typename T>
+void printTree(TreeNode<T> *root, const std::string &path) {
+    if (root == nullptr) return;
     cout << path << ": " << root->value << " (" << root->weight << ")\n";
     printTree(root->left, path + "->left");
     printTree(root->right, path + "->right");
@@ -23,10 +25,10 @@ void printTree(TreeNode<T>* root, std::string path){
 
 int main(int argc, char **argv) {
 
-    pbbs::launch(argc, argv, [&] (pbbs::measured_type measure) {
+    pbbs::launch(argc, argv, [&](const pbbs::measured_type &measure) {
         simpleVisualTest();
         testCorrectness();
-
+        timeTest(100);
     });
 
 //        simpleVisualTest();
@@ -37,7 +39,6 @@ int main(int argc, char **argv) {
 void testCorrectness() {
     auto tree = std::make_shared<PATree1<int>>();
     std::set<int> targetSet;
-
     for (int j = 0; j < 10; ++j) {
         //emplace
         cout << "emplace \n";
@@ -66,7 +67,7 @@ void testCorrectness() {
                 auto answers = tree->performActionsInParallel(actions.begin(), actions.end());
 
                 for (auto answ : answers) {
-                    if(!answ){
+                    if (!answ) {
                         cout << "???";
                     }
                     assert(answ);
@@ -103,7 +104,7 @@ void testCorrectness() {
         for (auto answ : answers) {
             assert(answ);
         }
-        for(auto it : removeSet){
+        for (auto it : removeSet) {
             targetSet.erase(it);
         }
         cout << "delete ended\n";
@@ -112,6 +113,46 @@ void testCorrectness() {
 
 
 }
+
+vector<Action<int>> generateActions(int m, std::normal_distribution<double> &distribution) {
+    std::default_random_engine generator;
+    vector<Action<int>> actions;
+    for (int i = 0; i < m; ++i) {
+        int number = distribution(generator);
+        actions.emplace_back(number, ActionType::LOOKUP);
+    }
+    return actions;
+}
+
+void timeTest(double dev) {
+    std::normal_distribution<double> distribution(0, dev);
+    auto tree = std::make_shared<PATree1<int>>();
+    vector<long> ns;
+    vector<long long> durations;
+
+    for(int i = 0; i < 1000; ++i) {
+        vector<Action<int>> actions = generateActions(100, distribution);
+        auto start = std::chrono::high_resolution_clock::now();
+        tree->performActionsInParallel(actions.begin(), actions.end());
+        auto end = std::chrono::high_resolution_clock::now();
+        auto evaluatedTime = end - start;
+        durations.push_back(evaluatedTime.count());
+        ns.push_back(tree->root->size);
+    }
+    cout << "dev = " << dev << std::endl;
+    cout << "ns = [" << ns[0] << " ,";
+    for(int i = 1; i < ns.size(); ++i){
+        cout << " ," << ns[i];
+    }
+    cout << "]\n";
+
+    cout << "durations = [" << durations[0] << " ,";
+    for(int i = 1; i < durations.size(); ++i){
+        cout << " ," << durations[i];
+    }
+    cout << "]\n";
+}
+
 
 void simpleVisualTest() {
     vector<bool> answers(3);
@@ -140,7 +181,7 @@ void simpleVisualTest() {
 
 
     std::vector<Action<int>> actions3 = {Action<int>(4, ActionType::LOOKUP),
-                                        Action<int>(-1, ActionType::INSERT),
+                                         Action<int>(-1, ActionType::INSERT),
                                          Action<int>(0, ActionType::INSERT),
                                          Action<int>(7, ActionType::INSERT)};
     answers = tree->performActionsInParallel(actions3.begin(), actions3.end());
