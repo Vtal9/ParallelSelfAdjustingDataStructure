@@ -12,7 +12,6 @@ void timeTest(int dev);
 
 void testCorrectness();
 
-void nWorkersTest();
 
 using std::vector;
 using std::cout;
@@ -25,18 +24,17 @@ void printTree(TreeNode<T> *root, const std::string &path) {
     printTree(root->right, path + "->right");
 }
 
-
 int main(int argc, char **argv) {
+
+
 
     pbbs::launch(argc, argv, [&](const pbbs::measured_type &measure) {
         simpleVisualTest();
         testCorrectness();
-        timeTest(10000);
+//        timeTest(10000);
         timeTest(100000);
         timeTest(1000000);
-        timeTest(10000000);
     });
-
 //        simpleVisualTest();
 //        testCorrectness();
 
@@ -151,7 +149,7 @@ vector<Action<int>> generateActions(int m, std::normal_distribution<double> &dis
 void timeTest(int dev) {
     int N = 10000;
     int countPoints = 100;
-    int m = 1000;
+    int m = 10000;
     std::normal_distribution<double> distribution(0, dev);
     auto tree = std::make_shared<PATree1<int>>();
     vector<long> ns;
