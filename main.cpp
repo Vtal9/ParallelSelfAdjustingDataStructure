@@ -7,8 +7,12 @@
 #include "bench.hpp"
 
 void simpleVisualTest();
+
 void timeTest(int dev);
+
 void testCorrectness();
+
+void nWorkersTest();
 
 using std::vector;
 using std::cout;
@@ -35,6 +39,8 @@ int main(int argc, char **argv) {
 
 //        simpleVisualTest();
 //        testCorrectness();
+
+
     return 0;
 }
 
@@ -133,30 +139,38 @@ vector<Action<int>> generateActions(int m, std::normal_distribution<double> &dis
 }
 
 void timeTest(int dev) {
+    int N = 10000;
+    int countPoints = 100;
+    int m = 100;
     std::normal_distribution<double> distribution(0, dev);
     auto tree = std::make_shared<PATree1<int>>();
     vector<long> ns;
     vector<long long> durations;
 
-    for(int i = 0; i < 100; ++i) {
-        vector<Action<int>> actions = generateActions(100, distribution);
+    for (int i = 0; i < N; ++i) {
+        vector<Action<int>> actions = generateActions(m, distribution);
         std::sort(actions.begin(), actions.end()); //O(nlog(n))
-        auto start = std::chrono::high_resolution_clock::now();
-        tree->performActionsInParallel(actions.begin(), actions.end());
-        auto end = std::chrono::high_resolution_clock::now();
-        auto evaluatedTime = end - start;
-        durations.push_back(evaluatedTime.count());
-        ns.push_back(tree->root->size);
+        if(i % (N / countPoints) == 0) {
+            auto start = std::chrono::high_resolution_clock::now();
+            tree->performActionsInParallel(actions.begin(), actions.end());
+            auto end = std::chrono::high_resolution_clock::now();
+            auto evaluatedTime = end - start;
+            durations.push_back(evaluatedTime.count());
+            ns.push_back(tree->root->size);
+        }
+        else{
+            tree->performActionsInParallel(actions.begin(), actions.end());
+        }
     }
     cout << "dev = " << dev << std::endl;
     cout << "ns = [" << ns[0];
-    for(int i = 1; i < ns.size(); ++i){
+    for (int i = 1; i < ns.size(); ++i) {
         cout << " ," << ns[i];
     }
     cout << "]\n";
 
     cout << "durations = [" << durations[0];
-    for(int i = 1; i < durations.size(); ++i){
+    for (int i = 1; i < durations.size(); ++i) {
         cout << " ," << durations[i];
     }
     cout << "]\n";
@@ -172,13 +186,13 @@ void simpleVisualTest() {
             Action<int>(2, ActionType::INSERT),
             Action<int>(1, ActionType::INSERT)};
     std::sort(actions.begin(), actions.end());
-    answers = tree->performActionsInParallel(actions.begin(), actions.end());
+    tree->performActionsInParallel(actions.begin(), actions.end());
     printTree(tree->root, "root");
     cout << "---------------------------------\n";
 
     std::vector<Action<int>> actions1 = {Action<int>(4, ActionType::INSERT)};
     std::sort(actions1.begin(), actions1.end());
-    answers = tree->performActionsInParallel(actions1.begin(), actions1.end());
+    tree->performActionsInParallel(actions1.begin(), actions1.end());
     printTree(tree->root, "root");
 
     cout << "---------------------------------\n";
@@ -186,7 +200,7 @@ void simpleVisualTest() {
 
     std::vector<Action<int>> actions2 = {Action<int>(4, ActionType::LOOKUP)};
     std::sort(actions2.begin(), actions2.end());
-    answers = tree->performActionsInParallel(actions2.begin(), actions2.end());
+    tree->performActionsInParallel(actions2.begin(), actions2.end());
     printTree(tree->root, "root");
 
     cout << "---------------------------------\n";
@@ -197,7 +211,7 @@ void simpleVisualTest() {
                                          Action<int>(0, ActionType::INSERT),
                                          Action<int>(7, ActionType::INSERT)};
     std::sort(actions3.begin(), actions3.end());
-    answers = tree->performActionsInParallel(actions3.begin(), actions3.end());
+    tree->performActionsInParallel(actions3.begin(), actions3.end());
     cout << "---------------------------------\n";
     printTree(tree->root, "root");
 }
