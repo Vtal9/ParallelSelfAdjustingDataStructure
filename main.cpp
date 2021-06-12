@@ -59,7 +59,8 @@ void testCorrectness() {
                 targetSet.insert(it);
             }
             std::sort(actions.begin(), actions.end());
-            tree->performActionsInParallel(actions.begin(), actions.end());
+            std::vector<bool> answers(actions.size());
+            tree->performActionsInParallel(actions.begin(), actions.end(), answers.begin(), answers.end());
         }
 
         cout << "emplace ended\n";
@@ -74,7 +75,8 @@ void testCorrectness() {
             k++;
             if (k % 10 == 0) {
                 std::sort(actions.begin(), actions.end());
-                auto answers = tree->performActionsInParallel(actions.begin(), actions.end());
+                std::vector<bool> answers(actions.size());
+                tree->performActionsInParallel(actions.begin(), actions.end(), answers.begin(), answers.end());
 
                 for (auto answ : answers) {
                     if (!answ) {
@@ -87,7 +89,8 @@ void testCorrectness() {
             }
         }
         std::sort(actions.begin(), actions.end());
-        auto answers = tree->performActionsInParallel(actions.begin(), actions.end());
+        std::vector<bool> answers(actions.size());
+        tree->performActionsInParallel(actions.begin(), actions.end(), answers.begin(), answers.end());
         for (auto answ : answers) {
             assert(answ);
         }
@@ -105,7 +108,8 @@ void testCorrectness() {
             k++;
             if (k % 10 == 0) {
                 std::sort(actions.begin(), actions.end());
-                answers = tree->performActionsInParallel(actions.begin(), actions.end());
+                std::vector<bool> answers(actions.size());
+                tree->performActionsInParallel(actions.begin(), actions.end(), answers.begin(), answers.end());
                 for (auto answ : answers) {
                     assert(answ);
                 }
@@ -113,7 +117,9 @@ void testCorrectness() {
             }
         }
         std::sort(actions.begin(), actions.end());
-        answers = tree->performActionsInParallel(actions.begin(), actions.end());
+        answers.clear();
+        answers.resize(actions.size());
+        tree->performActionsInParallel(actions.begin(), actions.end(), answers.begin(), answers.end());
         for (auto answ : answers) {
             assert(answ);
         }
@@ -131,8 +137,12 @@ vector<Action<int>> generateActions(int m, std::normal_distribution<double> &dis
     std::random_device rd;
     std::mt19937 gen(rd());
     vector<Action<int>> actions;
-    for (int i = 0; i < m; ++i) {
+    std::set<int> numbers;
+    while (numbers.size() < m) {
         int number = distribution(gen);
+        numbers.insert(number);
+    }
+    for (const auto &number : numbers) {
         actions.emplace_back(number, ActionType::LOOKUP);
     }
     return actions;
@@ -141,7 +151,7 @@ vector<Action<int>> generateActions(int m, std::normal_distribution<double> &dis
 void timeTest(int dev) {
     int N = 10000;
     int countPoints = 100;
-    int m = 100;
+    int m = 1000;
     std::normal_distribution<double> distribution(0, dev);
     auto tree = std::make_shared<PATree1<int>>();
     vector<long> ns;
@@ -150,16 +160,16 @@ void timeTest(int dev) {
     for (int i = 0; i < N; ++i) {
         vector<Action<int>> actions = generateActions(m, distribution);
         std::sort(actions.begin(), actions.end()); //O(nlog(n))
-        if(i % (N / countPoints) == 0) {
+        std::vector<bool> answers(actions.size());
+        if (i % (N / countPoints) == 0) {
             auto start = std::chrono::high_resolution_clock::now();
-            tree->performActionsInParallel(actions.begin(), actions.end());
+            tree->performActionsInParallel(actions.begin(), actions.end(), answers.begin(), answers.end());
             auto end = std::chrono::high_resolution_clock::now();
             auto evaluatedTime = end - start;
             durations.push_back(evaluatedTime.count());
             ns.push_back(tree->root->size);
-        }
-        else{
-            tree->performActionsInParallel(actions.begin(), actions.end());
+        } else {
+            tree->performActionsInParallel(actions.begin(), actions.end(), answers.begin(), answers.end());
         }
     }
     cout << "dev = " << dev << std::endl;
@@ -178,7 +188,7 @@ void timeTest(int dev) {
 
 
 void simpleVisualTest() {
-    vector<bool> answers(3);
+    (vector<bool>(3));
 
     auto tree = std::make_shared<PATree1<int>>();
     std::vector<Action<int>> actions = {
@@ -186,13 +196,16 @@ void simpleVisualTest() {
             Action<int>(2, ActionType::INSERT),
             Action<int>(1, ActionType::INSERT)};
     std::sort(actions.begin(), actions.end());
-    tree->performActionsInParallel(actions.begin(), actions.end());
+    std::vector<bool> answers(actions.size());
+    tree->performActionsInParallel(actions.begin(), actions.end(), answers.begin(), answers.end());
     printTree(tree->root, "root");
     cout << "---------------------------------\n";
 
     std::vector<Action<int>> actions1 = {Action<int>(4, ActionType::INSERT)};
     std::sort(actions1.begin(), actions1.end());
-    tree->performActionsInParallel(actions1.begin(), actions1.end());
+    answers.clear();
+    answers.resize(actions1.size());
+    tree->performActionsInParallel(actions1.begin(), actions1.end(), answers.begin(), answers.end());
     printTree(tree->root, "root");
 
     cout << "---------------------------------\n";
@@ -200,7 +213,9 @@ void simpleVisualTest() {
 
     std::vector<Action<int>> actions2 = {Action<int>(4, ActionType::LOOKUP)};
     std::sort(actions2.begin(), actions2.end());
-    tree->performActionsInParallel(actions2.begin(), actions2.end());
+    answers.clear();
+    answers.resize(actions2.size());
+    tree->performActionsInParallel(actions2.begin(), actions2.end(), answers.begin(), answers.end());
     printTree(tree->root, "root");
 
     cout << "---------------------------------\n";
@@ -211,7 +226,9 @@ void simpleVisualTest() {
                                          Action<int>(0, ActionType::INSERT),
                                          Action<int>(7, ActionType::INSERT)};
     std::sort(actions3.begin(), actions3.end());
-    tree->performActionsInParallel(actions3.begin(), actions3.end());
+    answers.clear();
+    answers.resize(actions3.size());
+    tree->performActionsInParallel(actions3.begin(), actions3.end(), answers.begin(), answers.end());
     cout << "---------------------------------\n";
     printTree(tree->root, "root");
 }

@@ -93,13 +93,15 @@ private:
                                                                                       leftFirst,
                                                                                       leftLast,
                                                                                       retFirst,
-                                                                                      retFirst + (leftLast - leftFirst));
+                                                                                      retFirst +
+                                                                                      (leftLast - leftFirst));
                                                    },
                                                    [this, &curRoot, &rightFirst, &lastAction, &retFirst, &firstAction, &retLast] {
                                                        curRoot->right = performActions(curRoot->right,
                                                                                        rightFirst,
                                                                                        lastAction,
-                                                                                       retFirst + (rightFirst - firstAction),
+                                                                                       retFirst +
+                                                                                       (rightFirst - firstAction),
                                                                                        retLast);
                                                    });
                                        },
@@ -330,11 +332,10 @@ private:
 public:
     TreeNode<T> *root;
 
-    template<typename Iterator>
-    std::vector<bool> performActionsInParallel(Iterator actionsBegin, Iterator actionsEnd) {
-        std::vector<bool> answers(actionsEnd - actionsBegin); //O(m)
-        root = performActions(root, actionsBegin, actionsEnd, answers.begin(), answers.end());
-        return answers;
+    template<typename Iterator, typename answersIterator>
+    void performActionsInParallel(Iterator actionsBegin, Iterator actionsEnd, answersIterator answersBegin,
+                                               answersIterator answersEnd) {
+        root = performActions(root, actionsBegin, actionsEnd, answersBegin, answersEnd);
     }
 
     PATree1() = default;
