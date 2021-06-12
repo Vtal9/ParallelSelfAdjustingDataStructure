@@ -149,7 +149,7 @@ vector<Action<int>> generateActions(int m, std::normal_distribution<double> &dis
 void timeTest(int dev) {
     int N = 10000;
     int countPoints = 100;
-    int m = 10000;
+    int m = 1000;
     std::normal_distribution<double> distribution(0, dev);
     auto tree = std::make_shared<PATree1<int>>();
     vector<long> ns;
