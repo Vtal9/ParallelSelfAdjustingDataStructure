@@ -29,12 +29,14 @@ int main(int argc, char **argv) {
 
 
     pbbs::launch(argc, argv, [&](const pbbs::measured_type &measure) {
-        simpleVisualTest();
-        testCorrectness();
+//        simpleVisualTest();
+//        testCorrectness();
 //        timeTest(10000);
         timeTest(100000);
+	cout << "\nbuild_graphs(dev, ns, durations)\n";
         timeTest(1000000);
-    });
+	cout << "\nbuild_graphs(dev, ns, durations)\n";    
+});
 //        simpleVisualTest();
 //        testCorrectness();
 
@@ -147,6 +149,7 @@ vector<Action<int>> generateActions(int m, std::normal_distribution<double> &dis
 }
 
 void timeTest(int dev) {
+	srand(9);
     int N = 10000;
     int countPoints = 100;
     int m = 1000;
